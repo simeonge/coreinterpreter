@@ -1,0 +1,200 @@
+TOKENIZER DOCUMENTATION
+by Simeon Georgiev
+
+USER MANUAL
+To use this tokenizer, create an instance of the tokenizer class in the following
+way: Lexer t = new Tokenizer(inputFile), where inputFile is the name of the
+file containing the Core source code.
+To get the first token, you may call the getToken method. To get the second token,
+you must first move to cursor to it. Use skipToken method for this, then call
+getToken to get the second token. These two methods will allow you to retrieve
+all of the token, until the EOF token. When the cursor points to the EOF token,
+the skipToken method does nothing. When calling the skipToken method, if a valid
+token is unable to be produced (because of a syntax error), an error message is output.
+If the cursor currently points to a integer
+token, you may call the intVal method to retrieve the value of this integer.
+Similarly, if the current token is an identifier token, you may call the idName
+methods to retrieve the name of the identifier. See also: DESCRIPTION OF INTERFACE,
+ERROR HANGLING & ERROR MESSAGES.
+
+CLASSES & INTERFACES
+TokenizerTestDriver - Test driver for the tokenizer.
+Lexer - Interface for the Tokenizer class.
+Tokenizer - The tokenizer class. 
+
+DESCRIPTION OF THE CORE LANGUAGE
+The tokenizer class takes as input a Core source program. 
+The BNF grammar for the tokenizer is as follows:
+<prog>	::= program <decl seq> begin <stmt seq> end	(1)
+<decl seq>	::= <decl> | <decl> <decl seq>			(2)
+<stmt seq>	::= <stmt> | <stmt> <stmt seq>			(3)
+<decl>		::=	int  <id list>;						(4)
+<id list>		::=	<id> | <id>, <id list>				(5)
+<stmt>		::=	<assign>|<if>|<loop>|<in>|<out>	(6)
+<assign>		::=	<id> = <exp>;					(7)
+<if>				::=	if <cond> then <stmt seq> end;		(8)
+			|if <cond> then <stmt seq> else <stmt seq> end;
+<loop>		::=	while <cond> loop <stmt seq> end;	(9)
+<input>		::=	read <id list>;						(10)
+<output>		::=	write <id list>;				(11)
+<cond>	::=	 <comp>|!<cond>							(12)
+			|     [<cond> && <cond>] | [<cond> || <cond>]
+<comp>	::= (<op> <comp op> <op>)			 	(13)
+<exp>	::= <fac>|<fac>+<exp>|<fac>-<exp>		(14)
+<fac>	::= <op> | <op> * <fac>							(15)
+<op>	::= <int> | <id> | (<exp>)						(16)
+<comp op> ::= != | == | < | > | <= | >=  			(17)
+<id>			::= <let> | <let><id> | <let><int>		(18)
+<let>	::=		A | B | C | ... | X | Y | Z						(19)
+<int>	::=		<digit> | <digit><int>						(20)
+<digit>	::=		0 | 1 | 2 | 3 | ... | 9						(21)
+
+Legal tokens can be broken down into four categories:
+Keywords: program, begin, end, int, if, then, else, while, loop, read, write
+	These have corresponding token numbers from 1 to 11
+Symbols: ; , = ! [ ] && || && ( ) + - * != == < > <= >=
+	These have numbers from 12 to 30
+Integers: unsigned integers from 0 to MAX_INTEGER (for the program to work)
+	Integers have a token number of 31
+Identifiers: A token that starts with an uppercase letter, followed by zero or
+	more uppercase letters, and ends with zero or more digits. Identifiers have a
+	token number of 32
+	
+A special token that doesn't appear in the source code is the EOF token, which
+has the token number of 33. This token is produced when the end of file is
+reached. In the resulting array of tokens that is produced by the tokenizer, 
+the EOF is the last token.
+
+Tokens are usually separated by whitespace. Between any two tokens, whitespace
+is required, unless one or both of the tokens is a symbol, in which case whitespace
+is not required. Whitespace is not allowed in the middle of a token. Whitespace is
+always allowed between any pair of tokens. There can be any number of whitespaces.
+
+DESCRIPTION OF THE INTERFACE
+The tokenizer has four public methods:
+1. int getToken() - Returns the token number of token pointed to by the cursor (the
+cursor begins at 0).
+2. String getTokenName() - Returns the token name of the current token. Used to create
+more meaningful and helpful error messages in the parser.
+3. skipToken() - Moves the cursor forward by one, unless the cursor points to
+the EOF token.
+4. int intVal() - Returns the integer value of the current integer token (#31). If
+the current token is not an integer, -1 is returned.
+5. string idName() - Returns the name of the current identifier token (#32). If the
+current token is not an identifier, null is returned.
+
+The tokenizer has one public constructor, which takes the name of the input file as
+a string parameter.
+
+DESCRIPTION OF THE TOKENIZER
+General:
+The tokenizer follows a "greedy" approach where it tries to read in as many characters
+as it can to produce a token. This means that for the string "===", it will first
+recognize and produce the token == and then the token =. This also means that the
+tokenizer will attempt to read in as many legal character for each token type as it can,
+and then attempt to produce a token from that string. For example, the string
+"programifend" will produce an error saying "programifend" is an invalid token, and NOT
+"whitespace required after program token". On the other hand, if a character of different
+type is encountered when it shouldn't be, such as in the string "programXYZ", the error
+message will say "whitespace required after program token", and NOT "programXYZ" is an
+invalid token. This is because characters of the same type *might* produce a legal token, but 
+characters of different types clearly cannot.
+This tokenizer uses regular expressions (java Patterns) to recognize string as valid
+tokens. 
+This tokenizer produces tokens in real time, as they're requested. First, the constructor
+produces one token, which can be accessed by the getToken method. If the user calls
+the skipToken method, another token is needed, so a new token is produced, and it
+can be accessed using the getToken method (since the cursor was moved forward). 
+
+Data Structures:
+1. Array (ArrayList) of tokens. As the tokens are produced, their numbers are put at the end
+of the array.
+2. Array of token names. As the tokens are produced, they are put at the end of the array.
+This array is mainly used for error messages and as a debugging aid.
+3. An integer cursor. Initialized to 0, the cursor can be incremented by 1 using the
+skipToken method.
+4. Number of tokens. Used by the class to keep track of how many tokens have been 
+produced. For integer and identifier tokens, also used to insert the value of integer/
+identifier in a map.
+5. Map of string to integer containing legal tokens. Maps the legal keywords and symbols
+to their corresponding token numbers. Used by the class to determine if a certain
+string is a legal token or not, and to get its token number.
+6. Map of integer to integer containing the value of integer tokens. Maps the current
+index of the token (data structure 3), to the value of the integer.
+7. Map of integer to string containing the values of identifier tokens. Map the current
+index of the token to the string representing its name.
+8. A string (StringBuffer) that is used by the class to build up tokens as they're being
+read, check for their validity, and insert them into the array of tokens, if they're
+valid.
+9. An input stream reader (BufferedReader) that is used to read from the input file. Is
+global because it's used by most private methods.
+
+Constructor:
+The constructor takes the name of the input file as a parameter. It passes this name to 
+a FileReader, which is wrapped with a BufferedReader. The BufferedReader is set to be
+referenced to by the global reader field. The reader reads in one character and puts it
+in the (initially empty) global token buffer. Then one token is produced using the
+produceToken method.
+
+Private methods:
+For all methods that produce tokens below, the following precondition must be true:
+The first letter of the correct type must be in the buffer when the method is called.
+For example, the buffer must contain a lowercase letter when the getWordToken is called.
+
+1. buildTokenMap() - This trivial method simply builds the token to token number map.
+This method is called by the constructor.
+2. getWordToken() - This method uses the buffer to build up a word token. It reads in 
+characters until one is found that is not a lowercase letter, then attempts to find
+this keyword in the token map. If found, it adds the appropriate token number to the
+array, otherwise throws a ParseException with an appropriate message.
+3. getSymbolToken() - This method uses the buffer to get a symbol token. It reads in a
+second character and attempts to find a token composed of the two characters in the
+token map (since the symbols can be at most two characters long). If no such token is found,
+it attempts to find a token composed of only the first character. If neither of these
+succeeds, an exception is thrown, otherwise the token is produced.
+4. getIntToken() - This method reads in digits until a non-digit is found. Then it uses
+the Integer.parseInt method to convert the string of digits into an integer. This integer
+is put in the integer values map, with the current token index (data structure 3) as the key.
+Then the token is produced by adding the number 31 to the array.
+5. getIdToken() - This method reads characters that are either uppercase letters or digits,
+until it finds one that is not. The resulting string is then matched to a pattern to 
+determine if in fact all the letter precede all the digits. The string is then added to
+the map of identifier names with the current index as the key. The token is the produced
+using number 32.
+6. produceToken() - This method produces one token from the input stream. First, it reads in
+all the whitespaces that precede a token. When a non-whitespace is read, it puts it in the
+buffer. It determines which of the four token methods above to call based on the character
+that is currently in the buffer. If the character in the buffer is not one that could start
+a token, an exception is thrown. After a token is produced, this method makes sure that the
+character immediately following the token is whitespace (unless that character is a
+punctuation, or a symbol token was produced). If there is no whitespace where there should be,
+an exception is thrown. The method then increments the index to indicate that a token was
+produced. No token method can be called if the buffer is empty (obviously). This happens only
+when the entire file has been read (and all the tokens produced). In this case, this method
+produces the EOF token.
+
+ERROR HANDLING & ERROR MESSAGES
+When dealing with the file, appropriate exceptions are caught and handled in the constructor
+and the produceToken method. These include FileNotFoundException, IOException, and 
+ParseException. The four token methods throw these exceptions. The ParseException is thrown
+in the following cases:
+1. An invalid token is read. Message: "Invalid token: "the token"".
+2. There is no whitespace after a token when there should be. Message: "Whitespace required
+after "the token" token."
+3. An character is read that cannot possibly start a token. Message: "Invalid character: 
+"the character"".
+All error messages are output to stderr.
+When an exception is caught, the program terminates with System.exit.
+
+TESTING
+I tested this tokenizer by first giving it a bunch of tokens with whitespaces where required
+to make sure valid tokens are produced correctly. Then I put some errors in the test file
+to make sure those errors where caught and that the error messages were appropriate. For
+example, I misspelled a keyword, I made an identifier that had digits in the middle like this:
+"X8X8X", I forgot to include a whitespace in various places where it is required, such as 
+between an keyword and an integer. Then I altered the test driver and outputted the values of
+any integer tokens and the names of any identifier tokens, to make sure the values and names
+are correctly stored in the map and correctly correspond to each token.
+
+ERRATA
+No known bugs.

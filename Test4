@@ -1,0 +1,16 @@
+program
+	int A, B, C, D;
+begin
+	A = 008;
+	B = 9;
+	C = (18 - 4 * 2) - 16;
+	if ![(A == 8) && [((B + 2) == 10) || ((A + 2) == 10)]] then
+		while (A != 0) loop
+			write C;
+			A = A - 1;
+		end;
+	else
+		write A, B;
+	end;
+	write D;
+end

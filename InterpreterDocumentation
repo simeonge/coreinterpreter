@@ -1,0 +1,204 @@
+DOCUMENTATION
+by Simeon Georgiev
+
+USER MANUAL
+To use this interpreter, call CoreInterpreter from main and pass it the source file
+and the data file from which you wish your Core program to take input. For a detailed
+description of how the interpreter works, see DESCRIPTIONS OF CLASSES below. For more
+information on the Tokenizer, see the documentation for part 1 of this project.
+
+CLASSES & INTERFACES
+Lexer & Tokenizer
+ParseTree & CoreParseTree
+Parser & CoreParser
+Printer & CorePrinter
+Executor & CoreExecutor
+
+DESCRIPTION OF THE CORE LANGUAGE
+The tokenizer class takes as input a Core source program. 
+The BNF grammar for the tokenizer is as follows:
+<prog>	::= program <decl seq> begin <stmt seq> end	(1)
+<decl seq>	::= <decl> | <decl> <decl seq>			(2)
+<stmt seq>	::= <stmt> | <stmt> <stmt seq>			(3)
+<decl>		::=	int  <id list>;						(4)
+<id list>		::=	<id> | <id>, <id list>				(5)
+<stmt>		::=	<assign>|<if>|<loop>|<in>|<out>	(6)
+<assign>		::=	<id> = <exp>;					(7)
+<if>				::=	if <cond> then <stmt seq> end;		(8)
+			|if <cond> then <stmt seq> else <stmt seq> end;
+<loop>		::=	while <cond> loop <stmt seq> end;	(9)
+<input>		::=	read <id list>;						(10)
+<output>		::=	write <id list>;				(11)
+<cond>	::=	 <comp>|!<cond>							(12)
+			|     [<cond> && <cond>] | [<cond> || <cond>]
+<comp>	::= (<op> <comp op> <op>)			 	(13)
+<exp>	::= <fac>|<fac>+<exp>|<fac>-<exp>		(14)
+<fac>	::= <op> | <op> * <fac>							(15)
+<op>	::= <int> | <id> | (<exp>)						(16)
+<comp op> ::= != | == | < | > | <= | >=  			(17)
+<id>			::= <let> | <let><id> | <let><int>		(18)
+<let>	::=		A | B | C | ... | X | Y | Z						(19)
+<int>	::=		<digit> | <digit><int>						(20)
+<digit>	::=		0 | 1 | 2 | 3 | ... | 9						(21)
+
+Production rules 18 and 20 (identifiers and integers) are treated as terminals,
+since the tokenizer reads them as one token.
+
+DATA ABSTRACTION
+The parse tree class is separate from the rest of the interpreter, and an abstract parse
+tree (the interface) is passed to each of the methods that need it. This is done to decouple
+the interpreter from the parse tree. Any new (valid) implementation of the ParseTree interface
+can be substituted, and the interpreter will still work.
+
+DESCRIPTION OF INTERFACES
+See the javadocs for ParseTree, Parser, Printer, and Executor for a full, detailed
+description of the public methods.
+
+The constructor for the Parser takes the name of the file containing the source program.
+The constructor for the Executor takes the name of the data input file.
+The ParseTree and the Printer use the default constructor.
+
+OVERALL DESIGN
+This interpreter takes two files as parameters - the file containing
+the Core source code, and the file containing integers, from which the Core program
+reads. The interpreter begins by first creating an empty parse tree. Then it creates
+a parser object and calls its parse method, passing the name of the source file and
+the parse tree created previously. The parser reads from the source file using the
+tokenizer. It checks for errors and builds the parse tree using recursive descent.
+After the parse tree is built, the interpreter creates a printer object and calls its
+print method, passing the newly-created parse tree as a parameter. The printer descends
+the parse tree using recursive descent as well, and outputs a pretty-printed version of
+the source program to stdout. No changes are made to the parse tree. After this is
+accomplished, the interpreter creates an executor object and calls its execute method,
+passing the parse tree and the name of the data file. The executor descends the tree using
+recursive descent, and execute the program. When executing assignment or read statements,
+the value assigned to the identifier is added to the parse tree. When evaluating expressions
+or write statements, the value of the identifiers are retrieved from the parse tree.
+
+DESCRIPTION OF CLASSES
+ParseTree - A single, monolithic parse tree is used to represent the Core program.
+Every method deals with the *current* node (row), except two: setIdVal (2) and getIdVal.
+These methods are called during the execution of the read and write statements, respectively.
+They are needed because the execRead and execWrite methods retrieve a list of id name which
+are to be read/written, and they don't descend to the individual id nodes. The id name is
+given as a parameter to determine which id to assign/get the value to/from. The parse tree
+also contains tables with identifiers and their current values, for use during execution.
+Data Structures:
+1. Two-dimensional array containing all the nodes of the program. Each row is a node,
+and each row has five indices: The number of the non-terminal node, the alternative
+used, and the row numbers of the three (or less) children nodes. There can be at most
+1000 nodes. If an attempt is made to add more than 1000 nodes, an assertion error will
+occur.
+2. An integer cursor that keeps track of the current row. Initially 0, the highest value
+it can have is 999. The cursor is altered using the goDown and goUp methods.
+3. A stack of integers containing the parents of the current node. The invariant is that
+the top of the stack always contains row number of the parent of the current node. If the
+stack is empty, then we are at the top node.
+4. A map of integers and their row numbers, used to store the integers in the program.
+5. A map of identifiers and their row numbers, used to store the identifiers in the program.
+6. A map of identifiers and their values (initially null), used during execution to set and
+retrieve values of identifiers. When an identifier is declared, it is added to both of the
+id maps.
+Private Methods:
+-int getNewRow() - this method returns the number of the first empty row between the current
+row and the end of the array. Used by the createBranch method to add a child to the current node.
+
+Parser - The parser takes a Core source program and creates a parse tree from it using
+recursive descent. There are as many methods as the number of non-terminals in the grammar
+(id and int are considered terminals). Each method is responsible for parsing only the
+non-terminals and terminals that its corresponding production rule produces. Each method calls
+the other methods to accomplish its parsing. The parser uses the tokenizer to read from the
+source file. The recursive descent algorithm uses one look-ahead token such that, before a
+method is called, getToken returns the first token of the production. For example, when the
+parseIf method is called, getToken must return the "if" token. Each method is responsible for
+ensuring this invariant is satisfied before calling other methods. The parses also ensures
+the syntax of the program is correct, and outputs an error message and terminates if it
+encounters a syntax error. It also enforces the requirement that each variable used is
+declared exactly once.
+Data Structures:
+-A tokenizer, used to read the source file.
+Constructor:
+The constructor takes the name of the input file and passes it to the global tokenizer's
+constructor.
+Private methods:
+There are 18 private methods. One for each non-terminal, except id-list, which has two.
+One is for parsing the declaration sequence. New identifiers are added to the parse tree
+then. The other is used for all other occurrences of id-list. These two methods help
+satisfy the context-sensitive requirement that each id in the statement sequence
+must have been declared first.
+
+Printer - The printer takes a parse tree (created by the parser) representing a Core program.
+It descends the tree using recursive descent, and outputs to stdout a pretty-printed version
+of the Core program represented by the parse tree. To accomplish this pretty printing, the
+printer adds an appropriate number of whitespaces before each line of output to correctly
+indent statements that inside while loops, for example.
+Data Structures:
+-An integer used to specify the number of spaces needed before a line of output. This is
+altered only by the printIf, printLoop, and print (public) methods, as they are the only ones
+which require their nested statements to be tabbed.
+Private Methods:
+There are 18 private methods, one for each non-terminal, and one used to print whitespaces.
+
+Executor - The executor takes the parse tree as a parameter to its public method, and begins
+execution. The parse tree's declaration sequence is
+ignored, because the declared variables are already in the parse tree. Thus, execution begins
+with the statement sequence. The executor uses recursive descent to descend the tree and
+execute/evaluate each node. It also enforces the requirement that each variable is initialized
+before it is used. When executing the read statement, the executor reads from the given data file.
+When executing the write statement, it writes to stdout.
+Data Structures:
+1. An enumeration containing the six comparison operators is used by the evalCompOp and evalComp
+to determine which comparator should be applied given a certain condition.
+2. A global scanner field used by the execRead method to read from the data file.
+Constructor:
+The constructor takes the name of the data file as a parameter to its constructor. It
+creates a global scanner and binds it to the data file.
+Private Methods:
+There are 15 private methods, one for each non-terminal, except <decl seq> and <decl>, as those
+are not evaluated at run-time.
+
+ERROR HANDLING & ERROR MESSAGES
+The following errors are caught by the parser:
+-Context-free syntax errors in the source code such as missing ";";
+-Context-sensitive errors such as duplicate variables or undeclared variables;
+When the error is caught, a ParseException is thrown from the method with an appropriate error message.
+The exception is caught in the public parse method, and the message is output to stderr from there.
+
+The following errors are caught by the executor:
+-Run-time errors such as uninitialized variables.
+When the error is caught, a Runtime Exception is thrown and caught in the same method, and the error
+message is output to stderr there.
+
+The format of the error messages is the following:
+-For CF errors: "Expecting a X at T", where T is the token (name) where the correct token X was expected.
+-For CS and run-time errors: "Duplicate/Undeclared/Uninitialized variable X", where X is the variable in
+question.
+
+Another error-handling mechanism used is asserts. Asserts are used to check preconditions of methods,
+such as making sure the parseIf method is called only if the current token is an "if", or that the
+array args in main contains exactly two arguments. In other words, asserts are only used for debugging.
+The asserts should not execute if the interpreter functions correctly (just as uncaught exceptions
+shouldn't occur). Asserts are used in the parse tree, parser, printer, and executor. Asserts are disabled
+by default.
+
+TESTING
+First I created three test files that contain the programs given as test cases on the newsgroup.
+I began testing by first only parsing the given source programs and printing them. If it printed,
+I would know that the parsing succeeded without error. Then I can look at the output and see if
+it is correct; if the output is correct, I know that the program was parsed correctly and the
+parse tree was constructed correctly. Next I changed the source programs and added more complex
+statements such as nested conditions, nested ifs, and complicated expressions, and checked if those
+parse and output correctly. Then I started adding errors to the programs such as missing parenthesis
+or an extra semi-colon to check if those errors were caught correctly and that the error messages
+made sense. I also added duplicate variables and undeclared variables to see if those were caught.
+I made sure that I covered every alternative in the grammar.
+When I was sure that my parser and printer work correctly, I wrote a program from scratch and started
+executing it. I started with simple statements like reading and writing a variable.
+Then I added ifs and loops and made the conditions more complicated, to see if they were evaluating
+correctly. I also wrote complicated expressions and assigned them to variables and outputted those
+variables, to see if the expressions evaluated correctly (at least as far as the grammar allows).
+Here I also wrote programs that are complicated enough to cover every alternative in the production
+rules. Finally, I added errors such as uninitialized variables to check if those were caught.
+
+ERRATA
+No known bugs.

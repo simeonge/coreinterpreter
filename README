@@ -1,0 +1,43 @@
+Parser, Printer, Executor
+Simeon Georgiev
+
+Contents:
+-CoreInterpreter.java - The interpreter containing the main method.
+
+-ParseTree.java - The interface of the parse tree.
+-CoreParseTree.java - The implementation of the parse tree.
+
+-Parser.java - The interface of the parser.
+-CoreParser.java - The implementation of the parser.
+
+-Printer.java - The interface for the printer.
+-CorePrinter.java - The implementation of the printer.
+
+-Executor.java - The interface for the executor.
+-CoreExecutor.java - The implementation of the executor.
+
+-Lexer.java - The interface for the tokenizer. Almost* the exact same file as submitted for part 1.
+-Tokenizer.java - The implementation of the tokenizer. Almost* the exact same file as submitted for part 1.
+
+-TokenizerDocumentation - Documentation for the tokenizer. Almost* the exact same file as submitted for part 1.
+
+-InterpreterDocumentation - Documentation for the interpreter.
+
+
+This lab was developed using eclipse.
+
+Please use eclipse to open, compile, and run the files, or use the following commands at the command prompt:
+javac CoreInterpreter.java
+java CoreInterpreter sourceFile dataFile
+where sourceFile is the name of the file containing a Core source program, and dataFile is the name of the
+input file the Core program is to read from.
+
+It is recommended that assertions be enabled before the program is run. Either way, asserts are only used in
+the program to check preconditions, i.e., they were used for debugging. Thus, they should not be executed if
+the program runs as it should. One specific precondition is that exactly two files are passed to main.
+Assertions can be enabled like this when the program is run:
+java -ea CoreInterpreter sourceFile dataFile
+
+
+*Changes to the tokenizer: Added method String getTokenName(), which returns the text of the current token.
+See TokenizerDocumentation for more details.
